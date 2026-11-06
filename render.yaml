@@ -1,0 +1,32 @@
+services:
+  # Spring Boot API -> TiDB Cloud. Built from the Dockerfile on every push that passes CI.
+  - type: web
+    name: stark-vms-api
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: assignment1/backend
+    dockerfilePath: assignment1/backend/Dockerfile
+    dockerContext: assignment1/backend
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      # Secrets: Render asks for these once, when the Blueprint is created. They are not in git.
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://stark-vms-web.onrender.com
+
+  # Flutter Web. GitHub Actions builds it (a free Render instance is too small for Flutter)
+  # and pushes the result to the `deploy-web` branch, which Render publishes as-is.
+  - type: web
+    name: stark-vms-web
+    runtime: static
+    branch: deploy-web
+    buildCommand: echo "Pre-built by GitHub Actions"
+    staticPublishPath: ./
+    autoDeployTrigger: commit

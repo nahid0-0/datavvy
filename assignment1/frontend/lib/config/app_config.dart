@@ -9,5 +9,5 @@ class AppConfig {
     defaultValue: 'http://localhost:8080',
   );
 
-  static const Duration requestTimeout = Duration(seconds: 15);
+  static const Duration requestTimeout = Duration(seconds: 60);
 }

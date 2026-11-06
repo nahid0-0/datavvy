@@ -1,0 +1,94 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths: ["assignment1/**", ".github/workflows/**"]
+  pull_request:
+    paths: ["assignment1/**", ".github/workflows/**"]
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.44.8"
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: assignment1/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: assignment1/backend/pom.xml
+      - run: ./mvnw -B verify
+
+  backend-image:
+    name: Backend Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t stark-vms-api assignment1/backend
+
+  frontend:
+    name: Frontend analyze + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: assignment1/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  # CD for the frontend: build on a GitHub runner, publish to the branch Render serves.
+  # (The backend needs no step here: Render deploys it itself once the checks above pass.)
+  publish-web:
+    name: Build and publish web
+    needs: [backend, backend-image, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Build Flutter web
+        working-directory: assignment1/frontend
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://stark-vms-api.onrender.com' }}
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
+      - name: Publish to deploy-web branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd assignment1/frontend/build/web
+          git init -q -b deploy-web
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Build web from ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" deploy-web
