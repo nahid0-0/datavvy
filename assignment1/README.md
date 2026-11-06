@@ -79,6 +79,19 @@ cd backend && ./mvnw test      # 60 tests: unit + full HTTP integration tests (H
 cd frontend && flutter test    # 19 tests: API client, validators, widget tests
 ```
 
+## Deployment (Render + GitHub Actions)
+
+```
+push to main ─► GitHub Actions: backend tests, Docker build, Flutter analyze + tests
+                  ├─► Render deploys the API (Docker) once checks pass   ─► stark-vms-api.onrender.com
+                  └─► builds Flutter web, pushes to `deploy-web` branch  ─► stark-vms-web.onrender.com
+```
+
+- `render.yaml` (repo root) describes both services. In Render: **New → Blueprint →** pick this repo.
+- Render asks once for `DB_URL`, `DB_USERNAME` and `DB_PASSWORD` (TiDB). They are never stored in git.
+- The frontend's API address comes from the repo variable `API_BASE_URL` (Settings → Secrets and variables → Actions → Variables). It defaults to `https://stark-vms-api.onrender.com`.
+- Free instances sleep after about 15 minutes idle, so the first request can take about a minute. The app waits up to 60 s.
+
 ## REST API
 
 Base path: `/api/v1/vehicles`
