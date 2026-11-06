@@ -5,7 +5,7 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    rootDir: assignment1/backend
+    # No rootDir: with it, Render resolves these two paths relative to it, not to the repo root.
     dockerfilePath: assignment1/backend/Dockerfile
     dockerContext: assignment1/backend
     healthCheckPath: /actuator/health

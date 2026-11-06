@@ -3,9 +3,9 @@ name: CI/CD
 on:
   push:
     branches: [main]
-    paths: ["assignment1/**", ".github/workflows/**"]
+    paths: ["assignment1/**", ".github/workflows/**", "render.yaml"]
   pull_request:
-    paths: ["assignment1/**", ".github/workflows/**"]
+    paths: ["assignment1/**", ".github/workflows/**", "render.yaml"]
 
 concurrency:
   group: ci-cd-${{ github.ref }}
